@@ -1,9 +1,11 @@
 use std::{
-    fs::{DirEntry, self},
-    path::{Path, PathBuf},
+    fs::{self, DirEntry},
+    path::{Path, PathBuf}, fmt::Display
 };
 
+use size::Size;
 use walkdir::WalkDir;
+use colored::*;
 
 use crate::paths::{self, GameClient};
 
@@ -12,29 +14,28 @@ pub struct GameInfo {
     name: String,
     path: PathBuf,
     client: GameClient,
-    size: Option<usize>,
+    size: Size,
+}
+
+impl Display for GameInfo {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}: {}\n", "Name".magenta(), self.name);
+        write!(f, "{}: {}\n", "Path".magenta(), self.path.as_path().to_string_lossy());
+        write!(f, "{}: {}\n", "Size".magenta(), self.size)
+    }
 }
 
 impl GameInfo {
-    pub fn new<P>(name: String, path: P, client: paths::GameClient) -> Self
-    where
-        P: AsRef<Path>,
-    {
-        let path = path.as_ref().to_path_buf();
-        GameInfo {
-            name,
-            path,
-            client,
-            size: None,
-        }
-    }
-
     pub fn new_from_pathbuf(path: PathBuf, client: GameClient) -> Self {
         let name = path.file_name().unwrap().to_string_lossy().to_string();
-        let mut size = None;
-        if let Ok(metadata) = path.metadata() {
-            size = Some(metadata.len() as usize);
-        }
+        let size: u64 = WalkDir::new(&path)
+            .into_iter()
+            .filter_map(|e| e.ok())
+            .map(|entry| entry.metadata().unwrap().len())
+            .sum();
+
+        let size = Size::from_bytes(size);
+
         GameInfo {
             name,
             path,
@@ -42,6 +43,15 @@ impl GameInfo {
             size,
         }
     }
+
+    pub fn client(&self) -> GameClient {
+        self.client
+    }
+
+    pub fn size(&self) -> Size {
+        self.size
+    }
+
 }
 
 pub fn scan_for_games(gamedir: paths::GameDir) -> Vec<GameInfo> {
@@ -50,9 +60,21 @@ pub fn scan_for_games(gamedir: paths::GameDir) -> Vec<GameInfo> {
         .sort_by_key(|entry| entry.metadata().unwrap().len())
         .into_iter()
         .filter(|entry| entry.is_ok())
-        .map(|entry| {
+        .filter_map(|entry| {
             let entry = entry.unwrap();
-            GameInfo::new_from_pathbuf(entry.into_path(), *gamedir.client())
+            let metadata = entry.metadata().unwrap();
+            if metadata.is_file() || metadata.is_symlink() {
+                return None;
+            }
+
+            if entry.path().ends_with(gamedir.client().get_client_str()) {
+                return None;
+            }
+
+            Some(GameInfo::new_from_pathbuf(
+                entry.into_path(),
+                *gamedir.client(),
+            ))
         })
         .collect();
 
@@ -72,6 +94,5 @@ mod tests {
             GameClient::Steam,
         );
         let res = scan_for_games(gamedir);
-        dbg!(res);
     }
 }

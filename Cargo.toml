@@ -10,3 +10,6 @@ walkdir = "2.3"
 clap = { version = "4.3", features = ["derive"] }
 thiserror = "1"
 anyhow = "1"
+size = "0.4"
+colored = "2"
+lazy_static = "1.4.0"

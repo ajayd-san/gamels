@@ -1,5 +1,5 @@
 #![allow(unused)]
-use std::{path::{Path, PathBuf}, str::FromStr};
+use std::{path::{Path, PathBuf}, str::FromStr, fmt::Display};
 use std::convert::AsRef;
 use walkdir::WalkDir;
 
@@ -19,6 +19,12 @@ pub enum GameClient {
 pub struct GameDir  {
     path: PathBuf,
     client: GameClient,
+}
+
+impl Display for GameClient {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self)
+    }
 }
 
 impl GameDir {
@@ -44,6 +50,16 @@ fn get_client_with_loc_str(loc_str: &str) -> GameClient {
         STEAM_PATH => GameClient::Steam,
         EPIC_PATH => GameClient::Epic,
         _ => GameClient::Other
+    }
+}
+
+impl GameClient {
+    pub fn get_client_str(&self) -> &'static str {
+        match self {
+            GameClient::Steam => STEAM_PATH,
+            GameClient::Epic => EPIC_PATH,
+            GameClient::Other => unreachable!()
+        }
     }
 }
 
