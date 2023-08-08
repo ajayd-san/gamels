@@ -67,7 +67,7 @@ pub fn scan_for_games(gamedir: paths::GameDir) -> Vec<GameInfo> {
                 return None;
             }
 
-            if entry.path().ends_with(gamedir.client().get_client_str()) {
+            if entry.path() == gamedir.path() {
                 return None;
             }
 
@@ -94,5 +94,6 @@ mod tests {
             GameClient::Steam,
         );
         let res = scan_for_games(gamedir);
+        dbg!(res);
     }
 }
